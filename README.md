@@ -8,7 +8,9 @@ Native, token-efficient 3D CAD tool for [Hermes Agent](https://github.com/NousRe
 
 Open [`demo/index.html`](demo/index.html) in any browser — a self-contained interactive 3D viewer of the Bowstring Warren Truss Bridge (12m span, 197 components, 1:10 camber). Auto-loads the STL from this repo's CDN. No server, no file picker, no setup.
 
-> 🖱 Drag to rotate · Scroll to zoom · Right-drag to pan · Tabs for specs, process, and files
+Also available: [`demo/manual.html`](demo/manual.html) — supports offline file:// loading with a file picker for local STL copies.
+
+> 🖱 Drag to rotate · Scroll to zoom · Right-drag to pan · See `demo/README.md` for full controls
 
 ## Credits & Reference
 

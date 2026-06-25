@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warren Bridge — Interactive 3D Viewer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0f0f1a; overflow: hidden; font-family: system-ui; }
+  #canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+  #hud { position: fixed; top: 0; left: 0; right: 0; z-index: 10; pointer-events: none; display: flex; justify-content: space-between; padding: 12px 16px; }
+  #hud > * { pointer-events: auto; }
+  #title { color: #f0821e; font-size: 16px; font-weight: 700; text-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+  #loading { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #f0821e; font-size: 16px; z-index: 20; background: rgba(15,15,26,0.9); padding: 20px 32px; border-radius: 10px; border: 1px solid #252540; }
+  .progress-bar { width: 200px; height: 4px; background: #252540; border-radius: 2px; margin-top: 10px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #f0821e; border-radius: 2px; transition: width 0.3s; width: 0%; }
+  #panel { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  #panel button { background: rgba(22,22,37,0.9); color: #c8c8d4; border: 1px solid #252540; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; backdrop-filter: blur(8px); transition: all 0.15s; }
+  #panel button:hover { background: rgba(240,130,30,0.2); border-color: #f0821e; color: #f0821e; }
+  #panel button.active { background: rgba(240,130,30,0.25); border-color: #f0821e; color: #f0821e; }
+  #info { position: fixed; top: 50px; right: 16px; z-index: 10; text-align: right; font-size: 11px; }
+  #info div { color: #6b6b80; margin-bottom: 2px; }
+  #info .val { color: #c8c8d4; }
+  #legend { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 20px; font-size: 11px; color: #6b6b80; }
+  #legend span { display: flex; align-items: center; gap: 6px; }
+  .swatch { width: 10px; height: 10px; border-radius: 2px; }
+  #hint { position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%); z-index: 10; font-size: 11px; color: rgba(107,107,128,0.5); transition: opacity 0.5s; }
+</style>
+</head>
+<body>
+<div id="canvas"></div>
+<div id="loading">Loading bridge model...<div class="progress-bar"><div class="progress-fill" id="progress"></div></div></div>
+<div id="hud"><div id="title">🔧 Bowstring Warren Truss Bridge</div><div id="info"><div>Triangles <span class="val" id="tris">—</span></div><div>FPS <span class="val" id="fps">—</span></div></div></div>
+<div id="hint">🖱 Drag to rotate · Scroll to zoom · Right-drag to pan</div>
+<div id="legend"><span><div class="swatch" style="background:#f0821e"></div> Steel</span><span><div class="swatch" style="background:#b8b8c6"></div> Concrete</span><span><div class="swatch" style="background:#b07840"></div> Wood</span></div>
+<div id="panel">
+  <button onclick="viewPreset('default')" id="btn-default" class="active">Perspective</button>
+  <button onclick="viewPreset('top')" id="btn-top">Top</button>
+  <button onclick="viewPreset('front')" id="btn-front">Front</button>
+  <button onclick="viewPreset('side')" id="btn-side">Side</button>
+  <button onclick="viewPreset('closeup')" id="btn-closeup">Close-up</button>
+  <button onclick="toggleWireframe()" id="btn-wire">Wireframe</button>
+  <button onclick="toggleAutoRotate()" id="btn-rot">Auto-Rotate</button>
+  <button onclick="resetView()">Reset</button>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f0f1a);
+scene.fog = new THREE.Fog(0x0f0f1a, 8000, 30000);
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth/innerHeight, 10, 50000);
+camera.position.set(0, 4000, 8000);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+document.getElementById('canvas').appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1000, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 500;
+controls.maxDistance = 30000;
+controls.maxPolarAngle = Math.PI * 0.7;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.4;
+controls.update();
+
+scene.add(new THREE.AmbientLight(0x303050, 1.5));
+const sun = new THREE.DirectionalLight(0xffeedd, 3);
+sun.position.set(10000, 15000, 8000);
+sun.castShadow = true; sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.near=100; sun.shadow.camera.far=50000;
+sun.shadow.camera.left=-15000; sun.shadow.camera.right=15000;
+sun.shadow.camera.top=15000; sun.shadow.camera.bottom=-5000;
+sun.shadow.bias=-0.0001; scene.add(sun);
+const fill = new THREE.DirectionalLight(0x8899cc, 0.8); fill.position.set(-3000,2000,-5000); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff, 0.6); rim.position.set(0,-1000,8000); scene.add(rim);
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(15000,15000), new THREE.MeshStandardMaterial({color:0x1a1a2a,roughness:0.9}));
+ground.rotation.x=-Math.PI/2; ground.position.y=-10; ground.receiveShadow=true; scene.add(ground);
+const grid = new THREE.GridHelper(15000,15,0x252540,0x1a1a30); grid.position.y=-5; scene.add(grid);
+
+const loader = new STLLoader();
+let bridgeMesh = null;
+
+function loadSTL(url) {
+  return new Promise((resolve, reject) => {
+    loader.load(url, resolve, (p) => {
+      if (p.lengthComputable) document.getElementById('progress').style.width = Math.round(p.loaded/p.total*100) + '%';
+    }, reject);
+  });
+}
+
+function onSTLLoaded(geometry) {
+  geometry.computeBoundingBox();
+  const c = new THREE.Vector3(); geometry.boundingBox.getCenter(c);
+  geometry.translate(-c.x, -c.y, -c.z);
+  geometry.rotateX(-Math.PI/2); // Z-up → Y-up
+  const bb = new THREE.Box3().setFromBufferAttribute(geometry.attributes.position);
+  geometry.translate(0, -bb.min.y + 50, 0);
+  bridgeMesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({color:0xf0821e,metalness:0.4,roughness:0.5}));
+  bridgeMesh.castShadow = bridgeMesh.receiveShadow = true;
+  scene.add(bridgeMesh);
+  geometry.computeBoundingBox(); const bc = new THREE.Vector3(); geometry.boundingBox.getCenter(bc);
+  controls.target.copy(bc); camera.position.set(bc.x+2000, bc.y+1500, bc.z+4000); controls.update();
+  document.getElementById('tris').textContent = (geometry.index?geometry.index.count/3:geometry.attributes.position.count/3).toLocaleString();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('hint').style.display = 'block';
+}
+
+// ── File loader: reads file, creates blob URL, uses async STLLoader.load() ──
+function loadSTLFromFile(file) {
+  document.getElementById('loading').innerHTML = 'Reading ' + file.name + '...<div class="progress-bar"><div class="progress-fill" id="progress"></div></div>';
+  const reader = new FileReader();
+  reader.onprogress = (e) => { if(e.lengthComputable) document.getElementById('progress').style.width = Math.round(e.loaded/e.total*100)+'%'; };
+  reader.onload = (e) => {
+    // Create blob URL → use async fetch-based STLLoader.load() (smooth, non-blocking)
+    const blob = new Blob([e.target.result], {type:'application/octet-stream'});
+    const url = URL.createObjectURL(blob);
+    document.getElementById('loading').innerHTML = 'Parsing geometry...<div class="progress-bar"><div class="progress-fill" id="progress" style="width:50%"></div></div>';
+    loadSTL(url).then(g => { URL.revokeObjectURL(url); onSTLLoaded(g); })
+      .catch(() => { document.getElementById('loading').innerHTML = '⚠ Failed to parse STL'; });
+  };
+  reader.onerror = () => { document.getElementById('loading').innerHTML = '⚠ Failed to read file'; };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Bootstrap ──
+(async function boot() {
+  if (location.protocol === 'file:') {
+    document.getElementById('loading').innerHTML =
+      '📂 Select WarrenBridge_v3.stl<br><span style="font-size:12px;color:#6b6b80">Same folder as this HTML</span><br><br>' +
+      '<button id="pickBtn" style="background:#f0821e;color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:14px;">Choose STL File</button>';
+    document.getElementById('pickBtn').onclick = () => {
+      const inp = document.createElement('input'); inp.type='file'; inp.accept='.stl';
+      inp.onchange = (e) => { if(e.target.files[0]) loadSTLFromFile(e.target.files[0]); };
+      inp.click();
+    };
+    return;
+  }
+  for (const url of ['WarrenBridge_v3.stl','../freecad_bridge_v3/WarrenBridge_v3.stl']) {
+    try { const g = await loadSTL(url); onSTLLoaded(g); return; } catch(e) {}
+  }
+  document.getElementById('loading').innerHTML =
+    'STL not found.<br><br><button id="pickBtn" style="background:#f0821e;color:#fff;border:none;padding:10px 24px;border-radius:8px;cursor:pointer;font-size:14px;">Choose STL File</button>';
+  document.getElementById('pickBtn').onclick = () => {
+    const inp = document.createElement('input'); inp.type='file'; inp.accept='.stl';
+    inp.onchange = (e) => { if(e.target.files[0]) loadSTLFromFile(e.target.files[0]); };
+    inp.click();
+  };
+})();
+
+// ── View presets ──
+const presets = {
+  default:{pos:[0,4000,8000],target:[0,1000,0]}, top:{pos:[0,10000,100],target:[0,1000,0]},
+  front:{pos:[0,2000,10000],target:[0,1000,0]}, side:{pos:[10000,2000,0],target:[0,1000,0]},
+  closeup:{pos:[1000,2500,4000],target:[-1000,1500,0]},
+};
+window.viewPreset = function(name) {
+  const p = presets[name]; if(!p) return;
+  const sp = camera.position.clone(), st = controls.target.clone();
+  const ep = new THREE.Vector3(...p.pos), et = new THREE.Vector3(...p.target);
+  const t0 = performance.now();
+  (function anim(now){const t=Math.min((now-t0)/800,1);const e=t<.5?2*t*t:-1+(4-2*t)*t;
+    camera.position.lerpVectors(sp,ep,e); controls.target.lerpVectors(st,et,e); controls.update();
+    if(t<1)requestAnimationFrame(anim);})();
+  document.querySelectorAll('#panel button[id^="btn-"]').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('btn-'+name); if(btn)btn.classList.add('active');
+};
+window.resetView = ()=>viewPreset('default');
+let wireframe=false;
+window.toggleWireframe=()=>{wireframe=!wireframe;if(bridgeMesh)bridgeMesh.material.wireframe=wireframe;document.getElementById('btn-wire').classList.toggle('active',wireframe);};
+window.toggleAutoRotate=()=>{controls.autoRotate=!controls.autoRotate;document.getElementById('btn-rot').classList.toggle('active',controls.autoRotate);};
+
+// FPS
+let fc=0,lt=performance.now();
+function fps(){fc++;const n=performance.now();if(n-lt>=1000){document.getElementById('fps').textContent=fc;fc=0;lt=n;}}
+(function anim(){requestAnimationFrame(anim);controls.update();renderer.render(scene,camera);fps();})();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+addEventListener('keydown',e=>{switch(e.key){case't':viewPreset('top');break;case'f':viewPreset('front');break;case's':viewPreset('side');break;case'd':viewPreset('default');break;case'c':viewPreset('closeup');break;case'w':toggleWireframe();break;case'r':toggleAutoRotate();break;case'Escape':resetView();break;}});
+let hh=false;renderer.domElement.addEventListener('pointerdown',()=>{if(!hh){document.getElementById('hint').style.opacity='0';hh=true;}});
+</script>
+</body>
+</html>

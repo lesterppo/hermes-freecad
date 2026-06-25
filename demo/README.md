@@ -1,39 +1,52 @@
 # Bridge Demo
 
-Self-contained HTML page demonstrating the Bowstring Warren Truss Bridge — an AI-generated 3D parametric model built by Hermes Agent × Gemini Pro.
+Two self-contained HTML pages demonstrating the Bowstring Warren Truss Bridge — an AI-generated 3D parametric model built by Hermes Agent × Gemini Pro over 7 collaborative rounds.
 
 ## Open
 
-Just open `index.html` in any browser. The 3D viewer loads automatically from GitHub CDN — no server, no file picker, no setup.
+| File | Loads STL | Best for |
+|------|-----------|----------|
+| [`index.html`](index.html) | Auto-loads from GitHub CDN | Quick view, one-click, no setup |
+| [`manual.html`](manual.html) | Auto-loads on http://, file picker on file:// | Offline use, local STL copy |
 
-## What's included
+Just open either file in any browser. No server required.
 
-| Tab | Content |
-|-----|---------|
-| 🎥 3D Viewer | Interactive Three.js model — orbit, zoom, pan, wireframe, auto-rotate, 5 view presets |
-| 📐 Specs | Dimensions, component breakdown with proportional bar charts |
-| 🔄 Process | 7-round Gemini Pro collaboration timeline, bugs found, design decisions |
-| 📦 Files | Deliverable listing with sizes |
+## index.html — Auto-Loader
 
-## How the STL loads
-
-The HTML tries three sources automatically:
-1. `WarrenBridge_v3.stl` in the same folder
-2. GitHub raw CDN: `raw.githubusercontent.com/lesterppo/hermes-freecad/main/WarrenBridge_v3.stl`
+**One-click:** opens and the bridge appears. 4-tab interface with 3D viewer, specs, design process, and file listing. Tries three STL sources automatically:
+1. Same folder (`WarrenBridge_v3.stl`)
+2. GitHub CDN (`raw.githubusercontent.com/lesterppo/hermes-freecad/main/WarrenBridge_v3.stl`)
 3. Local server fallback
 
-No file picker needed — the first successful source loads the model.
+## manual.html — Manual Loader
 
-## Controls
+**Two modes:**
+- **http://** — loads STL automatically from same-directory URL
+- **file://** (double-click from desktop) — shows "Choose STL File" button. Select `WarrenBridge_v3.stl` from the same folder and it loads instantly via async blob URL (smooth, non-blocking)
+
+Focused 3D viewer with orbit controls, view presets, wireframe toggle, auto-rotate, keyboard shortcuts. FPS counter and triangle count HUD.
+
+## Controls (both viewers)
 
 | Action | Input |
 |--------|-------|
-| Rotate | Left-drag |
-| Zoom | Scroll |
-| Pan | Right-drag |
-| Top/Front/Side | Press T / F / S |
-| Wireframe | Press W |
-| Auto-rotate | Press R |
+| Rotate | 🖱 Left-drag |
+| Zoom | 🖱 Scroll wheel |
+| Pan | 🖱 Right-drag |
+| Top view | Press `T` |
+| Front view | Press `F` |
+| Side view | Press `S` |
+| Default view | Press `D` |
+| Close-up | Press `C` |
+| Wireframe | Press `W` |
+| Auto-rotate | Press `R` |
+| Reset | `Escape` |
+
+## Technical Notes
+
+- **Z-up → Y-up:** The STL is exported from FreeCAD (Z-up coordinate system). Both viewers apply `geometry.rotateX(-Math.PI/2)` to convert to Three.js Y-up.
+- **file:// performance:** `manual.html` uses blob URL → `STLLoader.load()` (async, non-blocking) instead of `loader.parse()` (synchronous, freezes page for ~3s on 376K triangles).
+- **index.html:** Single file with embedded CSS, no external stylesheets. Only external dependency is Three.js from jsDelivr CDN.
 
 ## Privacy
 
