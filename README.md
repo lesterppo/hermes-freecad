@@ -4,6 +4,12 @@ Native, token-efficient 3D CAD tool for [Hermes Agent](https://github.com/NousRe
 
 **310 token schema** (zero when FreeCAD not installed). Co-designed with Gemini Pro over 7 rounds (session `c_6f8a3e44bc91ac84`).
 
+## Live Demo
+
+Open [`demo/index.html`](demo/index.html) in any browser — a self-contained interactive 3D viewer of the Bowstring Warren Truss Bridge (12m span, 197 components, 1:10 camber). Auto-loads the STL from this repo's CDN. No server, no file picker, no setup.
+
+> 🖱 Drag to rotate · Scroll to zoom · Right-drag to pan · Tabs for specs, process, and files
+
 ## Credits & Reference
 
 | Component | Backend | Reference |

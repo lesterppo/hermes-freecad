@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warren Truss Bridge — AI-Generated 3D Parametric Model</title>
+<style>
+:root{--bg:#0f0f1a;--card:#161625;--border:#252540;--text:#c8c8d4;--dim:#6b6b80;--orange:#f0821e;--green:#4ade80;--red:#f87171}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:system-ui;overflow-x:hidden}
+#hero{text-align:center;padding:28px 20px 20px;background:linear-gradient(180deg,rgba(240,130,30,.08) 0%,transparent 100%)}
+#hero h1{font-size:22px;color:var(--orange);letter-spacing:-.5px}
+#hero p{font-size:13px;color:var(--dim);margin-top:6px}
+#hero a{color:var(--orange);text-decoration:none}
+.badges{display:flex;justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.badge{font-size:10px;padding:3px 8px;border-radius:10px;background:var(--card);border:1px solid var(--border);color:var(--dim)}
+.badge.ok{border-color:#2d6a3a;color:var(--green)}
+
+/* Tabs */
+#tabs{display:flex;justify-content:center;gap:0;border-bottom:1px solid var(--border);margin-bottom:0;position:sticky;top:0;z-index:20;background:var(--bg)}
+#tabs button{background:none;border:none;color:var(--dim);padding:10px 20px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;transition:all .15s}
+#tabs button:hover{color:var(--text)}
+#tabs button.active{color:var(--orange);border-bottom-color:var(--orange)}
+
+.tab{display:none;padding:20px;max-width:1100px;margin:0 auto}
+.tab.active{display:block}
+
+/* 3D Viewer */
+#viewer3d{width:100%;height:70vh;min-height:400px;background:var(--bg);border-radius:8px;position:relative;overflow:hidden;border:1px solid var(--border)}
+#viewer3d canvas{display:block}
+#loadMsg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--orange);font-size:14px;z-index:5;background:rgba(15,15,26,.9);padding:16px 24px;border-radius:8px;border:1px solid var(--border)}
+.loadbar{width:160px;height:3px;background:var(--border);border-radius:2px;margin:8px auto 0;overflow:hidden}
+.loadbar div{height:100%;background:var(--orange);border-radius:2px;width:0;transition:width .3s}
+.view-controls{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:5;flex-wrap:wrap;justify-content:center}
+.view-controls button{background:rgba(22,22,37,.9);color:var(--dim);border:1px solid var(--border);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:11px}
+.view-controls button:hover,.view-controls button.active{color:var(--orange);border-color:var(--orange)}
+
+/* Cards */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}
+.card h2{font-size:14px;color:var(--orange);margin-bottom:12px}
+.card h3{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin:10px 0 6px}
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px}
+.specs dt{color:var(--dim)} .specs dd{font-weight:600}
+.comp-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px}
+.comp-label{width:90px;text-align:right;color:var(--dim);flex-shrink:0}
+.comp-bar-wrap{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.comp-bar{height:100%;border-radius:3px}
+.comp-count{width:100px;color:var(--text);font-size:11px}
+.bar-s{background:var(--orange)} .bar-c{background:#b8b8c6} .bar-w{background:#b07840}
+.quote{font-style:italic;color:var(--dim);border-left:2px solid var(--orange);padding-left:12px;margin:8px 0;font-size:12px;line-height:1.5}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{text-align:left;padding:5px 8px;color:var(--dim);border-bottom:1px solid var(--border)}
+td{padding:5px 8px;border-bottom:1px solid var(--border)}
+td:first-child{font-family:monospace;color:var(--text)}
+td:nth-child(2){color:var(--dim)}
+.rounds{list-style:none}
+.rounds li{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.rounds li:last-child{border-bottom:none}
+.rn{color:var(--orange);font-weight:600;min-width:65px}
+.rd{color:var(--dim);flex:1;margin:0 8px}
+.rf{color:var(--text);font-size:11px}
+.files{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.file-card{background:var(--bg);border-radius:8px;padding:14px;text-align:center;border:1px solid var(--border)}
+.file-card .icon{font-size:24px;margin-bottom:4px}
+.file-card .name{font-size:12px;color:var(--text)}
+.file-card .size{font-size:11px;color:var(--dim)}
+.footer{text-align:center;padding:20px;color:var(--dim);font-size:11px;border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<div id="hero">
+  <h1>🔧 Bowstring Warren Truss Bridge</h1>
+  <p>AI-agent-generated 3D parametric bridge · <a href="https://github.com/NousResearch/hermes-agent">Hermes Agent</a> × <a href="https://gemini.google.com">Gemini Pro</a> · 7-round collaboration</p>
+  <div class="badges">
+    <span class="badge ok">✓ Watertight</span><span class="badge ok">✓ Valid Geometry</span>
+    <span class="badge">197 Components</span><span class="badge">12m × 2.5m × 2m</span>
+    <span class="badge">1:10 Camber</span><span class="badge">Production-Ready</span>
+  </div>
+</div>
+
+<div id="tabs">
+  <button class="active" onclick="switchTab('viewer')">🎥 3D Viewer</button>
+  <button onclick="switchTab('specs')">📐 Specs</button>
+  <button onclick="switchTab('process')">🔄 Process</button>
+  <button onclick="switchTab('files')">📦 Files</button>
+</div>
+
+<!-- TAB 1: 3D Viewer -->
+<div class="tab active" id="tab-viewer">
+  <div id="viewer3d">
+    <div id="loadMsg">Loading bridge from GitHub...<div class="loadbar"><div id="loadpct"></div></div></div>
+    <div class="view-controls" id="vctrl" style="display:none">
+      <button onclick="vp('default')" id="bv-default" class="active">Persp</button>
+      <button onclick="vp('top')" id="bv-top">Top</button>
+      <button onclick="vp('front')" id="bv-front">Front</button>
+      <button onclick="vp('side')" id="bv-side">Side</button>
+      <button onclick="vp('closeup')" id="bv-closeup">Close</button>
+      <button onclick="tw()" id="bv-wire">Wire</button>
+      <button onclick="tar()" id="bv-rot">Rotate</button>
+    </div>
+  </div>
+  <p style="text-align:center;font-size:11px;color:var(--dim);margin-top:8px">🖱 Drag to rotate · Scroll to zoom · Right-drag to pan · Keys: T/F/S/D/C/W/R/Esc</p>
+</div>
+
+<!-- TAB 2: Specs -->
+<div class="tab" id="tab-specs">
+  <div class="grid2" style="margin-top:0">
+    <div class="card">
+      <h2>Dimensions</h2>
+      <dl class="specs">
+        <dt>Span</dt><dd>12,000 mm (12 m)</dd><dt>Width</dt><dd>2,500 mm</dd>
+        <dt>Height</dt><dd>2,000 mm + 1,200 mm camber</dd><dt>Bays</dt><dd>10 (1,200 mm each)</dd>
+        <dt>Camber</dt><dd>1:10 (architectural)</dd><dt>Volume</dt><dd>35.9 m³</dd>
+        <dt>BBox X</dt><dd>−750 → 12,750 mm</dd><dt>BBox Z</dt><dd>−500 → 3,296 mm</dd>
+        <dt>Status</dt><dd style="color:var(--green)">Production-Ready ✓</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h2>Components</h2>
+      <h3>Steel Superstructure (172)</h3>
+      <div class="comp-row"><span class="comp-label">Chords</span><div class="comp-bar-wrap"><div class="comp-bar bar-s" style="width:18%"></div></div><span class="comp-count">38</span></div>
+      <div class="comp-row"><span class="comp-label">Diagonals</span><div class="comp-bar-wrap"><div class="comp-bar bar-s" style="width:22%"></div></div><span class="comp-count">42</span></div>
+      <div class="comp-row"><span class="comp-label">X-Braces</span><div class="comp-bar-wrap"><div class="comp-bar bar-s" style="width:5%"></div></div><span class="comp-count">10</span></div>
+      <div class="comp-row"><span class="comp-label">Floor Beams</span><div class="comp-bar-wrap"><div class="comp-bar bar-s" style="width:6%"></div></div><span class="comp-count">11</span></div>
+      <div class="comp-row"><span class="comp-label">Spheres</span><div class="comp-bar-wrap"><div class="comp-bar bar-s" style="width:20%"></div></div><span class="comp-count">42</span></div>
+      <div class="comp-row"><span class="comp-label">Railings</span><div class="comp-bar-wrap"><div class="comp-bar bar-s" style="width:13%"></div></div><span class="comp-count">26+4</span></div>
+      <h3>Concrete Foundation (8)</h3>
+      <div class="comp-row"><span class="comp-label">Abutments</span><div class="comp-bar-wrap"><div class="comp-bar bar-c" style="width:100%"></div></div><span class="comp-count">2+4+2</span></div>
+      <h3>Wood Decking (17)</h3>
+      <div class="comp-row"><span class="comp-label">Deck</span><div class="comp-bar-wrap"><div class="comp-bar bar-w" style="width:100%"></div></div><span class="comp-count">1+16 planks</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: Process -->
+<div class="tab" id="tab-process">
+  <div class="grid2" style="margin-top:0">
+    <div class="card">
+      <h2>Design Process (7 Rounds)</h2>
+      <ul class="rounds">
+        <li><span class="rn">R1</span><span class="rd">Bridge architecture brainstorm</span><span class="rf">5 KB</span></li>
+        <li><span class="rn">R2</span><span class="rd">Refine: camber, nodes, materials</span><span class="rf">5 KB</span></li>
+        <li><span class="rn">R3</span><span class="rd">Complete build plan + API specs</span><span class="rf">7 KB</span></li>
+        <li><span class="rn">R4</span><span class="rd">v1 review: "pedestrian death trap"</span><span class="rf">3 KB</span></li>
+        <li><span class="rn">R5</span><span class="rd">v2 review: railing code violation</span><span class="rf">3 KB</span></li>
+        <li><span class="rn">R6</span><span class="rd">Uploaded source — found 4 bugs</span><span class="rf">5 KB</span></li>
+        <li><span class="rn">R7</span><span class="rd">v3 sign-off: "Bridge is locked"</span><span class="rf">3 KB</span></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h2>Gemini Pro's Verdict</h2>
+      <div class="quote">"You have successfully engineered a highly robust, token-efficient parametric generator. The bridge is locked. For the geometric goal, v3 is complete."</div>
+      <div class="quote">"The implementation of Foundation, Steel Superstructure, and Wood Decking elevates this from a simple script to a professional CAD pipeline."</div>
+      <div class="quote">"Dropping the script from 252 to 197 lines while adding complexity demonstrates highly token-efficient, consolidated logic."</div>
+    </div>
+    <div class="card">
+      <h2>Bugs Found (Source Review)</h2>
+      <table><tr><th>Bug</th><th>Severity</th><th>Fix</th></tr>
+      <tr><td>Duplicate strut at i==0</td><td style="color:var(--orange)">Medium</td><td>Skip i==0 in diagonal loop</td></tr>
+      <tr><td>Abutment ramp: hollow shell</td><td style="color:var(--red)">Critical</td><td>Extrude 2D profile along Y</td></tr>
+      <tr><td>Railing 600mm gaps</td><td style="color:var(--red)">Critical</td><td>Continuous 5mm infill panels</td></tr>
+      <tr><td>n_diagonals = strlen("10")</td><td style="color:var(--dim)">Cosmetic</td><td>Removed unused variable</td></tr>
+      <tr><td>Camber 1:20 invisible</td><td style="color:var(--orange)">Design</td><td>Doubled to 1:10</td></tr></table>
+    </div>
+    <div class="card">
+      <h2>Key Decisions</h2>
+      <table><tr><th>Decision</th><th>Why</th></tr>
+      <tr><td>Part.makeCompound()</td><td>Avoids boolean cascade failure</td></tr>
+      <tr><td>Cylindrical top chords</td><td>Prevents twist on parabola</td></tr>
+      <tr><td>Node spheres at joints</td><td>Guarantees manifold geometry</td></tr>
+      <tr><td>No Sketcher</td><td>Headless-safe, reproducible</td></tr>
+      <tr><td>Infill panels</td><td>Meets 4-inch code without 100+ posts</td></tr>
+      <tr><td>Single master loop</td><td>197 lines, zero redundancy</td></tr></table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: Files -->
+<div class="tab" id="tab-files">
+  <div class="files">
+    <div class="file-card"><div class="icon">📐</div><div class="name">WarrenBridge_v3.FCStd</div><div class="size">68 KB · FreeCAD source</div></div>
+    <div class="file-card"><div class="icon">🖨️</div><div class="name">WarrenBridge_v3.stl</div><div class="size">17.9 MB · 3D printable</div></div>
+    <div class="file-card"><div class="icon">📦</div><div class="name">WarrenBridge_v3.step</div><div class="size">832 KB · CAD exchange</div></div>
+    <div class="file-card"><div class="icon">🐍</div><div class="name">bridge_v3.py</div><div class="size">9 KB · 197-line script</div></div>
+    <div class="file-card"><div class="icon">🎞️</div><div class="name">bridge_color_slow.gif</div><div class="size">629 KB · Animated preview</div></div>
+    <div class="file-card"><div class="icon">🛠️</div><div class="name">hermes-freecad</div><div class="size"><a href="https://github.com/lesterppo/hermes-freecad" style="color:var(--orange)">GitHub repo</a></div></div>
+  </div>
+</div>
+
+<div class="footer">
+  Built entirely headless · No GUI · 310 token schema ·
+  <a href="https://github.com/lesterppo/hermes-freecad" style="color:var(--dim)">hermes-freecad</a> ·
+  <a href="https://github.com/NousResearch/hermes-agent" style="color:var(--dim)">Hermes Agent</a>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {STLLoader} from 'three/addons/loaders/STLLoader.js';
+
+// Tab switching
+window.switchTab = function(name) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelector('#tabs button[onclick*="'+name+'"]').classList.add('active');
+  if(name==='viewer'){setTimeout(()=>{if(window._resize3d)window._resize3d()},100)}
+};
+
+// ── 3D Viewer ──
+const container = document.getElementById('viewer3d');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f0f1a);
+scene.fog = new THREE.Fog(0x0f0f1a, 6000, 25000);
+
+const camera = new THREE.PerspectiveCamera(40, container.clientWidth/container.clientHeight||1, 10, 50000);
+camera.position.set(0, 4000, 8000);
+
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0,1000,0); controls.enableDamping=true; controls.dampingFactor=.08;
+controls.minDistance=500; controls.maxDistance=30000; controls.maxPolarAngle=Math.PI*.7;
+controls.autoRotate=true; controls.autoRotateSpeed=.4; controls.update();
+
+scene.add(new THREE.AmbientLight(0x303050,1.5));
+const sun = new THREE.DirectionalLight(0xffeedd,3); sun.position.set(10000,15000,8000);
+sun.castShadow=true; sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.near=100; sun.shadow.camera.far=50000;
+sun.shadow.camera.left=-15000; sun.shadow.camera.right=15000;
+sun.shadow.camera.top=15000; sun.shadow.camera.bottom=-5000;
+sun.shadow.bias=-.0001; scene.add(sun);
+const fill = new THREE.DirectionalLight(0x8899cc,.8); fill.position.set(-3000,2000,-5000); scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffffff,.6); rim.position.set(0,-1000,8000); scene.add(rim);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(15000,15000),new THREE.MeshStandardMaterial({color:0x1a1a2a,roughness:.9}));
+ground.rotation.x=-Math.PI/2; ground.position.y=-10; ground.receiveShadow=true; scene.add(ground);
+const grid = new THREE.GridHelper(15000,15,0x252540,0x1a1a30); grid.position.y=-5; scene.add(grid);
+
+let bridgeMesh = null;
+const loader = new STLLoader();
+
+function fitRenderer() {
+  const w = container.clientWidth, h = container.clientHeight;
+  renderer.setSize(w, h); camera.aspect = w/h; camera.updateProjectionMatrix();
+}
+fitRenderer();
+window._resize3d = fitRenderer;
+new ResizeObserver(fitRenderer).observe(container);
+
+const STL_URLS = [
+  'WarrenBridge_v3.stl',
+  'https://raw.githubusercontent.com/lesterppo/hermes-freecad/main/WarrenBridge_v3.stl',
+  'http://127.0.0.1:8090/WarrenBridge_v3.stl',
+];
+
+function loadSTL(url) {
+  return new Promise((resolve, reject) => {
+    loader.load(url, resolve, (p) => {
+      if(p.lengthComputable) document.getElementById('loadpct').style.width = Math.round(p.loaded/p.total*100)+'%';
+    }, reject);
+  });
+}
+
+function onLoaded(geometry) {
+  geometry.computeBoundingBox();
+  const c = new THREE.Vector3(); geometry.boundingBox.getCenter(c);
+  geometry.translate(-c.x,-c.y,-c.z);
+  geometry.rotateX(-Math.PI/2);
+  const bb = new THREE.Box3().setFromBufferAttribute(geometry.attributes.position);
+  geometry.translate(0,-bb.min.y+50,0);
+  bridgeMesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({color:0xf0821e,metalness:.4,roughness:.5}));
+  bridgeMesh.castShadow=bridgeMesh.receiveShadow=true; scene.add(bridgeMesh);
+  geometry.computeBoundingBox(); const bc=new THREE.Vector3(); geometry.boundingBox.getCenter(bc);
+  controls.target.copy(bc); camera.position.set(bc.x+2000,bc.y+1500,bc.z+4000); controls.update();
+  document.getElementById('loadMsg').style.display='none';
+  document.getElementById('vctrl').style.display='flex';
+}
+
+(async function boot() {
+  for(const url of STL_URLS) {
+    try { const g = await loadSTL(url); onLoaded(g); return; } catch(e) { console.log('Tried',url,e.message); }
+  }
+  document.getElementById('loadMsg').innerHTML = '⚠ Could not load STL.<br><span style="font-size:12px;color:#6b6b80">Check internet connection</span>';
+})();
+
+// View controls
+const presets = {default:{pos:[0,4000,8000],target:[0,1000,0]},top:{pos:[0,10000,100],target:[0,1000,0]},front:{pos:[0,2000,10000],target:[0,1000,0]},side:{pos:[10000,2000,0],target:[0,1000,0]},closeup:{pos:[1000,2500,4000],target:[-1000,1500,0]}};
+window.vp = function(name) {
+  const p=presets[name]; if(!p)return;
+  const sp=camera.position.clone(),st=controls.target.clone();
+  const ep=new THREE.Vector3(...p.pos),et=new THREE.Vector3(...p.target);
+  const t0=performance.now();
+  (function anim(now){const t=Math.min((now-t0)/800,1);const e=t<.5?2*t*t:-1+(4-2*t)*t;
+    camera.position.lerpVectors(sp,ep,e);controls.target.lerpVectors(st,et,e);controls.update();
+    if(t<1)requestAnimationFrame(anim);})();
+  document.querySelectorAll('.view-controls button[id^="bv-"]').forEach(b=>b.classList.remove('active'));
+  const btn=document.getElementById('bv-'+name); if(btn)btn.classList.add('active');
+};
+let wire=false;
+window.tw=()=>{wire=!wire;if(bridgeMesh)bridgeMesh.material.wireframe=wire;document.getElementById('bv-wire').classList.toggle('active',wire)};
+window.tar=()=>{controls.autoRotate=!controls.autoRotate;document.getElementById('bv-rot').classList.toggle('active',controls.autoRotate)};
+
+function anim(){requestAnimationFrame(anim);controls.update();renderer.render(scene,camera);}
+anim();
+addEventListener('keydown',e=>{switch(e.key){case't':vp('top');break;case'f':vp('front');break;case's':vp('side');break;case'd':vp('default');break;case'c':vp('closeup');break;case'w':tw();break;case'r':tar();break;case'Escape':vp('default');break;}});
+</script>
+</body>
+</html>
