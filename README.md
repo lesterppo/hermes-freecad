@@ -2,40 +2,49 @@
 
 Native, token-efficient 3D CAD tool for [Hermes Agent](https://github.com/NousResearch/hermes-agent). A single service-gated tool `freecad_exec` that wraps FreeCAD's headless Python console — Hermes writes FreeCAD Python code, the tool executes it and returns compact JSON with document state, export verification, and optional PNG preview renders.
 
-**310 token schema** (zero when FreeCAD not installed). Co-designed with Gemini Pro over 7 rounds (session `c_6f8a3e44bc91ac84`).
+**310 token schema** (zero when FreeCAD not installed).
 
-## Live Demo
+## Live Demos
 
-Open [`demo/index.html`](demo/index.html) in any browser — a self-contained interactive 3D viewer of the Bowstring Warren Truss Bridge (12m span, 197 components, 1:10 camber). Auto-loads the STL from this repo's CDN. No server, no file picker, no setup.
+| Demo | Description | Size |
+|------|-------------|------|
+| [Bowstring Warren Truss Bridge](demo/index.html) | 12m span, 197 components, 1:10 camber | Loads STL from CDN |
+| [Bridge (offline)](demo/standalone.html) | Same bridge, self-contained — no network needed | 3.2 MB embedded |
+| [Tower of Babel](examples/tower_of_babel/viewer.html) | 7-tier Mesopotamian ziggurat, 74 parts, spiral ramp | 144 KB embedded |
 
-Also available: [`demo/manual.html`](demo/manual.html) — supports offline file:// loading with a file picker for local STL copies.
+> Drag to rotate · Scroll to zoom · Right-drag to pan
 
-> 🖱 Drag to rotate · Scroll to zoom · Right-drag to pan · See `demo/README.md` for full controls
+## Projects
 
-## Credits & Reference
+### Tower of Babel — Parametric Ziggurat
+7-tier Mesopotamian ziggurat co-designed with Gemini Pro (session `c_72a72a8b188e50d9`). 320 × 370 × 296 mm, 74 parts compounded. Features: piecewise spiral ramp, corner landings, monumental arched gatehouse, summit temple with columns, dynamic buttresses. Fully parametric — tune base_width, height_decay, step_depth, ramp_width. Build script + STL in [`examples/tower_of_babel/`](examples/tower_of_babel/).
 
-| Component | Backend | Reference |
-|-----------|---------|-----------|
-| `freecad_exec` | FreeCAD headless (`freecadcmd`) | [FreeCAD](https://github.com/FreeCAD/FreeCAD) — open-source parametric 3D CAD |
-| Preview render | numpy-stl + Pillow | Lightweight isometric STL-to-PNG (no GUI needed) |
+### Bowstring Warren Truss Bridge
+12m span bowstring Warren truss bridge co-designed with Gemini Pro (session `c_6f8a3e44bc91ac84`). 197 components, cylindrical struts for parabolic chords, node spheres for manifold joints, 1:10 camber. Full-res STL at root (17.9 MB), decimated version (48K faces, 2.4 MB) in `demo/`.
 
-FreeCAD is built on [OpenCASCADE](https://dev.opencascade.org/) (geometry kernel), [Coin3D](https://github.com/coin3d/coin) (scene graph), and [Qt](https://www.qt.io/) (GUI). This integration uses only the Python API — no GUI dependencies.
+## Self-Contained HTML Viewer
+
+Build offline-capable 3D viewers that work on `file://` (no server, double-click to open):
+
+1. **Decimate if needed:** `python3 scripts/decimate_stl.py input.stl output.stl [voxel_mm]`
+2. **Fill template:** Replace `__STL_BASE64__` and camera/material placeholders in [`templates/standalone-viewer.html`](templates/standalone-viewer.html)
+3. **Deliver:** Single HTML file, everything embedded — no external files, no network requests
+
+Key details: `file://` blocks `fetch()` → use `atob()` → `Uint8Array` → `Blob` URL for STL loading. FreeCAD Z-up → Three.js Y-up via `rotateX(-PI/2)`. CDN: jsdelivr purged `examples/js/` — use `examples/jsm/` with importmap.
 
 ## Quick Install
 
 ```bash
-# 1. Clone and install
 git clone https://github.com/lesterppo/hermes-freecad.git /tmp/hermes-freecad
 cd /tmp/hermes-freecad && bash install.sh
 
-# 2. Install FreeCAD
+# Install FreeCAD
 sudo apt install freecad        # Debian/Ubuntu
 # OR: brew install --cask freecad  # macOS
 # OR: download AppImage from https://www.freecad.org/downloads.php
 
-# 3. Enable and restart
+# Enable and restart
 hermes tools enable freecad
-# Start a new Hermes session, then: /skill freecad
 ```
 
 ## Usage
@@ -58,70 +67,16 @@ print(f"Volume: {box.Volume:.0f} mm³")
 ```python
 freecad_exec(code="""
 import FreeCAD, Part, Mesh
-
 doc = FreeCAD.newDocument("Export")
 sphere = Part.makeSphere(15)
 Part.show(sphere, "Sphere")
 doc.recompute()
-
 Mesh.export([doc.Objects[0]], "/tmp/sphere.stl")
 doc.saveAs("/tmp/sphere.FCStd")
 """, out_file="/tmp/sphere.stl", render="/tmp/sphere_preview.png")
 ```
 
-### Query Geometry
-```python
-freecad_exec(code="""
-import FreeCAD, Part
-doc = FreeCAD.open("/path/to/model.FCStd")
-for obj in doc.Objects:
-    if hasattr(obj, 'Shape') and obj.Shape:
-        s = obj.Shape
-        print(f"{obj.Name}: V={s.Volume:.0f}mm³ A={s.Area:.0f}mm²")
-""")
-```
-
-### Complex Operations (Boolean, Transforms, Patterns)
-```python
-freecad_exec(code="""
-import FreeCAD, Part
-
-doc = FreeCAD.newDocument("Assembly")
-# Create parts
-base = Part.makeBox(100, 50, 10)
-hole = Part.makeCylinder(5, 15, FreeCAD.Vector(25, 25, -2))
-
-# Boolean cut
-base_obj = doc.addObject("Part::Feature", "Base")
-base_obj.Shape = base
-hole_obj = doc.addObject("Part::Feature", "Hole")
-hole_obj.Shape = hole
-
-cut = doc.addObject("Part::Cut", "DrilledBase")
-cut.Base = base_obj
-cut.Tool = hole_obj
-doc.recompute()
-
-# Compound for efficient multi-body export
-compound = Part.makeCompound([base_obj.Shape, cut.Shape])
-final = doc.addObject("Part::Feature", "Assembly")
-final.Shape = compound
-doc.recompute()
-print(f"Volume: {final.Shape.Volume:.0f} mm³")
-""")
-```
-
-## Output Format
-
-```json
-{
-  "ok": true,
-  "o": "Volume: 1000 mm³",
-  "doc": [{"name": "Test", "objects": [{"n": "Box", "t": "Part::Feature", "l": "Box"}], "n_objects": 1}],
-  "out_file": {"path": "/tmp/sphere.stl", "size": 684, "size_human": "684 B"},
-  "preview": "/tmp/sphere_preview.png"
-}
-```
+For the full SKILL.md with compound assembly patterns, oriented struts, boolean rules, FreeCAD 1.1.1 quirks, double-execution guard, and 7-round Gemini collaboration pattern, see [SKILL.md](SKILL.md).
 
 ## Token Efficiency
 
@@ -132,35 +87,16 @@ print(f"Volume: {final.Shape.Volume:.0f} mm³")
 | Output | Compact JSON, short keys (`o`, `doc`, `e`, `ok`) |
 | Toolset | NOT in `_HERMES_CORE_TOOLS` — off by default |
 
-## Manual Toolset Setup
+## Credits & Reference
 
-If the automated install doesn't work, add this to `~/.hermes/hermes-agent/toolsets.py`:
+| Component | Backend | Reference |
+|-----------|---------|-----------|
+| `freecad_exec` | FreeCAD headless (`freecadcmd`) | [FreeCAD](https://github.com/FreeCAD/FreeCAD) |
+| Preview render | numpy-stl + Pillow | Lightweight isometric STL-to-PNG |
+| STL decimation | Vertex clustering (numpy-stl) | `scripts/decimate_stl.py` |
+| 3D viewer | Three.js (CDN, self-contained) | `templates/standalone-viewer.html` |
 
-```python
-# In the TOOLSETS dict, add after the "medical" entry:
-"freecad": {
-    "description": "3D CAD modeling via FreeCAD headless — parametric modeling, STL/STEP/FCStd export",
-    "tools": ["freecad_exec"],
-    "includes": [],
-},
-```
-
-Then:
-```bash
-hermes tools enable freecad
-# Start a new Hermes session
-```
-
-## Preview Render
-
-Add `render="/tmp/preview.png"` to get a lightweight isometric PNG preview (requires `pip install numpy-stl pillow`). No GUI or Xvfb needed — pure Python STL-to-PNG renderer.
-
-## Prerequisites
-
-| Component | Requirement | Install |
-|-----------|-------------|---------|
-| `freecad_exec` | `freecadcmd` on PATH | `sudo apt install freecad` |
-| Preview render | numpy-stl, pillow | `pip install numpy-stl pillow` |
+FreeCAD is built on [OpenCASCADE](https://dev.opencascade.org/) (geometry kernel), [Coin3D](https://github.com/coin3d/coin) (scene graph), and [Qt](https://www.qt.io/) (GUI). This integration uses only the Python API — no GUI dependencies.
 
 ## License
 

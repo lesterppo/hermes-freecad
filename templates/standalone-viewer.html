@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>__TITLE__</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; color: #e0d5c1; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; height: 100vh; }
+canvas { display: block; }
+#info { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.75); padding: 12px 18px; border-radius: 8px; font-size: 13px; line-height: 1.6; pointer-events: none; }
+#info h2 { font-size: 18px; margin-bottom: 6px; color: #e8b86d; }
+#info span { color: #a0a0b0; }
+#tabs { position: absolute; top: 15px; right: 20px; display: flex; gap: 6px; z-index: 10; }
+.tab { padding: 8px 16px; background: rgba(0,0,0,0.5); border: 1px solid #555; border-radius: 6px; color: #ccc; cursor: pointer; font-size: 12px; transition: all 0.2s; user-select: none; }
+.tab:hover { background: rgba(232,184,109,0.25); border-color: #e8b86d; color: #e8b86d; }
+#status { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 16px; color: #e8b86d; z-index: 5; }
+#error { position: absolute; top: 56%; left: 50%; transform: translate(-50%,0); font-size: 13px; color: #ff6666; max-width: 500px; text-align: center; z-index: 5; }
+</style>
+</head>
+<body>
+<div id="status">Loading model...</div>
+<div id="error"></div>
+<div id="info">
+  <h2>__TITLE__</h2>
+  <span>__SUBTITLE__</span><br>
+  <span>__FOOTER__</span>
+</div>
+<div id="tabs">
+  <div class="tab" onclick="window._resetView()">Reset</div>
+  <div class="tab" onclick="window._viewFront()">Front</div>
+  <div class="tab" onclick="window._viewTop()">Top</div>
+  <div class="tab" onclick="window._viewSide()">Side</div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+const statusEl = document.getElementById('status');
+const errorEl = document.getElementById('error');
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.fog = new THREE.Fog(0x1a1a2e, __FOG_NEAR__, __FOG_FAR__);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 10, 50000);
+camera.position.set(__CAM_X__, __CAM_Y__, __CAM_Z__);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, __TARGET_Y__, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = __MIN_DIST__;
+controls.maxDistance = __MAX_DIST__;
+controls.maxPolarAngle = Math.PI * 0.65;
+controls.update();
+
+// Lighting
+scene.add(new THREE.AmbientLight(0x443322, __AMBIENT__));
+const sun = new THREE.DirectionalLight(0xffeedd, __SUN_INTENSITY__);
+sun.position.set(__SUN_X__, __SUN_Y__, __SUN_Z__);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 10;
+sun.shadow.camera.far = 50000;
+sun.shadow.camera.left = -__SHADOW_SIZE__;
+sun.shadow.camera.right = __SHADOW_SIZE__;
+sun.shadow.camera.top = __SHADOW_SIZE__;
+sun.shadow.camera.bottom = -__SHADOW_SIZE__/2;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x8899cc, __FILL_INTENSITY__);
+fill.position.set(__FILL_X__, __FILL_Y__, __FILL_Z__);
+scene.add(fill);
+const rim = new THREE.DirectionalLight(0xffddaa, __RIM_INTENSITY__);
+rim.position.set(__RIM_X__, __RIM_Y__, __RIM_Z__);
+scene.add(rim);
+
+// Ground
+const groundGeo = new THREE.PlaneGeometry(__GROUND_SIZE__, __GROUND_SIZE__);
+const ground = new THREE.Mesh(groundGeo,
+  new THREE.MeshStandardMaterial({ color: __GROUND_COLOR__, roughness: 0.9 }));
+ground.rotation.x = -Math.PI/2;
+ground.position.y = __GROUND_Y__;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// Grid
+const grid = new THREE.PolarGridHelper(__GRID_RADIUS__, 48, 24, 64, 0x445544, 0x334433);
+grid.position.y = __GRID_Y__;
+scene.add(grid);
+
+// Load embedded STL
+const STL_B64 = "__STL_BASE64__";
+const stlBytes = Uint8Array.from(atob(STL_B64), c => c.charCodeAt(0));
+const stlUrl = URL.createObjectURL(new Blob([stlBytes], {type: 'application/octet-stream'}));
+
+new STLLoader().load(stlUrl, function(geometry) {
+  statusEl.style.display = 'none';
+  geometry.computeVertexNormals();
+  geometry.rotateX(-Math.PI/2);   // FreeCAD Z-up → Three.js Y-up
+  geometry.center();
+  geometry.translate(0, -geometry.boundingBox.min.y, 0);
+
+  const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+    color: __MESH_COLOR__, roughness: __ROUGHNESS__, metalness: __METALNESS__
+  }));
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+
+  // Bounding box wireframe
+  const bb = geometry.boundingBox;
+  const boxLine = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(
+      bb.max.x-bb.min.x, bb.max.y-bb.min.y, bb.max.z-bb.min.z)),
+    new THREE.LineBasicMaterial({ color: 0x555555, transparent: true, opacity: 0.25 }));
+  boxLine.position.copy(bb.getCenter(new THREE.Vector3()));
+  boxLine.position.y = bb.max.y;
+  scene.add(boxLine);
+
+  // Scale marker
+  const marker = new THREE.Mesh(
+    new THREE.BoxGeometry(__MARKER_SIZE__, 4, 4),
+    new THREE.MeshStandardMaterial({ color: 0xe8b86d, emissive: 0xe8b86d, emissiveIntensity: 0.3 }));
+  marker.position.set(bb.min.x, 4, bb.max.z + __MARKER_OFFSET__);
+  scene.add(marker);
+}, undefined, function(err) {
+  statusEl.textContent = 'Failed to load model';
+  statusEl.style.color = '#ff6666';
+  errorEl.textContent = 'Error: ' + (err.message || err);
+});
+
+function animate() { requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); }
+animate();
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Camera presets — adjust __FRONT_*__, __TOP_*__, __SIDE_*__ for your model
+window._resetView = () => { camera.position.set(__CAM_X__, __CAM_Y__, __CAM_Z__); controls.target.set(0,__TARGET_Y__,0); controls.update(); };
+window._viewFront = () => { camera.position.set(__FRONT_X__, __FRONT_Y__, __FRONT_Z__); controls.target.set(0,__TARGET_Y__,0); controls.update(); };
+window._viewTop   = () => { camera.position.set(__TOP_X__, __TOP_Y__, __TOP_Z__); controls.target.set(0,__TARGET_Y__,0); controls.update(); };
+window._viewSide  = () => { camera.position.set(__SIDE_X__, __SIDE_Y__, __SIDE_Z__); controls.target.set(0,__TARGET_Y__,0); controls.update(); };
+</script>
+</body>
+</html>

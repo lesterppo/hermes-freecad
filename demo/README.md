@@ -7,7 +7,8 @@ Two self-contained HTML pages demonstrating the Bowstring Warren Truss Bridge â€
 | File | Loads STL | Best for |
 |------|-----------|----------|
 | [`index.html`](index.html) | Auto-loads from GitHub CDN | Quick view, one-click, no setup |
-| [`manual.html`](manual.html) | Auto-loads on http://, file picker on file:// | Offline use, local STL copy |
+| [`standalone.html`](standalone.html) | Self-contained (STL embedded) | Offline, double-click from desktop, no network |
+| [`manual.html`](manual.html) | Auto-loads on http://, file picker on file:// | Offline use with local full-res STL |
 
 Just open either file in any browser. No server required.
 
