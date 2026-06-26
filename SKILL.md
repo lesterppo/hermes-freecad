@@ -1,7 +1,7 @@
 ---
 name: freecad
 description: Parametric 3D CAD via FreeCAD's Python API in headless mode.
-version: 1.4.0
+version: 1.4.1
 author: Peter + Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
@@ -30,6 +30,17 @@ Parametric 3D CAD modeling via FreeCAD's Python API. Hermes writes Python code t
 - Generating parametric designs with variables
 - Querying geometry properties (volume, area, center of mass)
 - Creating 2D sketches and extruding/padding them into 3D parts
+
+## When NOT to Use (Hard Constraints)
+
+FreeCAD is a parametric CAD kernel (OpenCASCADE) — it works with geometric primitives and BRep solids. It has NO sculpting, NO mesh deformation, NO subdivision surfaces, NO organic modeling tools.
+
+- **Human/animal figures**: Do not attempt. Cylinders+spheres produce crude mannequins, not statues. Use Blender, ZBrush, or another sculpting tool for organic forms.
+- **Photorealistic faces**: Impossible. No sculpting, no skin texturing.
+- **Cloth/fabric simulation**: Not available. Geometric approximations (V-zipper extrusion) are the ceiling.
+- **Text/logos via extrusion**: Unreliable in headless mode. Font rendering requires GUI.
+
+If the user asks for a human figure, statue, bust, or character, state this constraint immediately — do not attempt to approximate with primitives. The result will be crude and the user's time wasted.
 
 ## Prerequisites
 
@@ -442,7 +453,7 @@ For the full workflow and CDN path rationale, see `references/standalone-project
   build_model()
   ```
 
-- **`Mesh.export()` keyword changes in 1.1.1**: `angularDeflection` is not a valid keyword argument in FreeCAD 1.1.1. Use the bare form or positional `tolerance` only:
+- **`Shape.scale()` crashes in 1.1.1**: The `Part.Shape.scale()` method crashes FreeCAD (segfault/"Application unexpectedly terminated") on any argument form — `scale(factor)`, `scale(Vector(x,y,z))`, `scale((x,y,z))` all fail. Do NOT use `Shape.scale()`. For non-uniform scaling, use `transformGeometry(mat)` with a `FreeCAD.Matrix().scale(...)` instead, but only if the matrix is identity-aligned (translate to origin first, scale, translate back). For simple cases, prefer modifying the primitive parameters directly (e.g. different radii) or accepting uniform shapes.
   ```python
   # Works in 1.1.1
   Mesh.export([obj], "/path/model.stl")
