@@ -9,7 +9,7 @@ metadata:
   hermes:
     tags: [cad, 3d-modeling, freecad, parametric-design, step, stl, openscad]
     category: software-development
-    related_skills: [hermes-agent]
+    related_skills: [hermes-agent, gem-cli]
     config:
       tools.freecad.enabled:
         description: Enable the freecad_exec tool for 3D CAD modeling
@@ -429,6 +429,47 @@ Key implementation details:
 - Camera presets: adjust `__CAM_*__`, `__FRONT_*__`, `__TOP_*__`, `__SIDE_*__` for your model's bounding box.
 
 For the full workflow and CDN path rationale, see `references/standalone-project-page.md`.
+
+## Gemini Gem Collaboration (gem-cli)
+
+For multi-turn collaborative 3D design, use the `gem-cli` tool with a task-specific Gemini Gem:
+
+```bash
+# 1. Create a FreeCAD-specialized Gem
+echo "You are a FreeCAD 3D modeling expert..." | gem-cli --create-gem "FreeCAD Designer"
+
+# 2. Collaborate: gem generates script, you run it, send screenshots back for review
+gem-cli <gem-id> -c session.json --new "Build a Tokyo Skytree at 1:1000 scale"
+freecadcmd build.py               # execute the script
+# render previews, then:
+gem-cli <gem-id> -c session.json -i front.png -i iso.png -i top.png "Review the model"
+
+# 3. Clean up
+gem-cli --delete-gem <gem-id>
+```
+
+The Gem provides iterative design review: it catches structural flaws, prescribes fixes, and generates corrected scripts. Proven on 9-turn Skytree collaboration (V1→V4 iterations).
+
+### Automated Pipeline (gem-freecad)
+
+The `scripts/gem-freecad` script automates the full loop:
+
+```bash
+gem-freecad <gem-url-or-id> -m pro "build a tower"
+
+# Pipeline steps:
+# 1. Calls gem-cli --extract-code 1 → gets FreeCAD script
+# 2. Auto-fixes common Gem API mistakes (Part.Wire wrapping, .translated())
+# 3. Runs freecadcmd → generates STL
+# 4. Decimates STL for embedding
+# 5. Renders 3 preview views (front, iso, top)
+# 6. Computes geometry stats (faces, bounds, height)
+# 7. Outputs JSON summary with all paths
+```
+
+Install: `cp scripts/gem-freecad ~/.local/bin/ && chmod +x ~/.local/bin/gem-freecad`
+
+Requires: `gem-cli` (from [hermes-gem-cli](https://github.com/lesterppo/hermes-gem-cli)), FreeCAD, numpy-stl, matplotlib.
 
 ## Pitfalls
 
